@@ -1,0 +1,15 @@
+digraph {
+	node [fontsize=9 height=0.2 shape=circle width=0.2]
+	Open [fillcolor=lightgray shape=box style=filled]
+	High [fillcolor=lightgray shape=box style=filled]
+	Low [fillcolor=lightgray shape=box style=filled]
+	Close [fillcolor=lightgray shape=box style=filled]
+	Volume [fillcolor=lightgray shape=box style=filled]
+	Decide [fillcolor=lightblue style=filled]
+	377118 [fillcolor=white style=filled]
+	High -> Decide [color=red penwidth=0.4537172577776165 style=dotted]
+	Close -> Decide [color=green penwidth=0.21441033997005035 style=dotted]
+	Low -> Decide [color=green penwidth=0.19191956006837987 style=solid]
+	High -> 377118 [color=green penwidth=0.33164934504602517 style=solid]
+	Low -> 377118 [color=red penwidth=0.12526814544733206 style=solid]
+}
