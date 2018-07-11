@@ -1,6 +1,6 @@
 # Python applications of Machine Learning
 
-This folder contains my applications of various machine learning algorithms to different problems that I find interesting to explore.
+This folder contains my applications of various machine learning algorithms to different problems that I find interesting to explore using Pyhton.
 
 Algorithms used :
 - NeuroEvolution of Augmenting Topologies (NEAT) genetic algorithm.
