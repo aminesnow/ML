@@ -49,7 +49,7 @@ else
 endif
 
 
-J = (-(y'*log(h_theta) + (ones(m,1) - y)'*log(ones(m,1) - h_theta)) + (0.5*lambda_v'*(theta.^2)))/m;
+J = (-(y'*log(h_theta) + (1.0 - y)'*log(1.0 - h_theta)) + (0.5*lambda_v'*(theta.^2)))/m;
 
 grad = (((h_theta - y)'*X) + (lambda_v.*theta)')/m;
 

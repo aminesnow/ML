@@ -13,7 +13,9 @@ g = zeros(size(z));
 %               each value of z (z can be a matrix, vector or scalar).
 
 
+sig_z = sigmoid(z);
 
+g = sig_z.*(1.0 - sig_z);
 
 
 

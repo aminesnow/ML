@@ -64,18 +64,54 @@ Theta2_grad = zeros(size(Theta2));
 
 
 
+a1 = [ones(m, 1) X];
+z2 = a1*Theta1';
+a2 = [ones(m, 1) (sigmoid(z2))];
+z3 = a2*Theta2';
+h_theta = sigmoid(z3);
 
 
+y_recoded = zeros(size(h_theta));
+
+for i = 1:numel(y)
+  y_recoded(i,y(i)) = 1;
+end
 
 
+J = sum((-(y_recoded.*log(h_theta) + (1 - y_recoded).*log(1 - h_theta)))(:));
+
+J = (J + (lambda/2)*(sum((Theta1(:,2:end).^2)(:)) + sum((Theta2(:,2:end).^2)(:))))/m;
 
 
+D1_i = zeros(size(Theta1));
+D2_i = zeros(size(Theta2));
+for i = 1:m
+  a1_i = a1(i,:);
+  z2_i = z2(i,:);
+  a2_i = a2(i,:);
+  z3_i = z3(i,:);
+  a3_i = h_theta(i,:);
+    
+  delta3_i = (a3_i - y_recoded(i,:))';
+  
+  delta2_i = ((Theta2'*delta3_i)(2:end)).*sigmoidGradient(z2_i)';
+
+  D1_i = D1_i + delta2_i*a1_i;
+  D2_i = D2_i + delta3_i*a2_i;
+
+end
+
+lambda_v1 = zeros(size(Theta1));
+lambda_v1 = [lambda*eye(size(Theta1, 2))];
+lambda_v1(:,1) = 0;
+
+lambda_v2 = zeros(size(Theta2));
+lambda_v2 = [lambda*eye(size(Theta2, 2))];
+lambda_v2(:,1) = 0;
 
 
-
-
-
-
+Theta1_grad = (D1_i + Theta1*lambda_v1)/m;
+Theta2_grad = (D2_i + Theta2*lambda_v2)/m;
 
 
 
