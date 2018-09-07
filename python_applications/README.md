@@ -9,3 +9,4 @@ Algorithms used :
 Problems explored
 - Predicting stock market prices.
 - Trading in the stock market for maximum returns.
+- Filtering spam mail
