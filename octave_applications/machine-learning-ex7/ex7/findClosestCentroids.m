@@ -20,15 +20,12 @@ idx = zeros(size(X,1), 1);
 %
 % Note: You can use a for-loop over the examples to compute this.
 %
-
-m = size(X,1)
-
+m = size(X,1);
 for i = 1:m
-  dist = sum((X(i)-centroids(1)).^2);
-  idx(i) = 1;
-  for j = 2:K
-    curr_dist = sum((X(i)-centroids(j)).^2);
-    if(curr_dist < dist)
+  dist = 0;
+  for j = 1:K
+    curr_dist = sum((X(i,:)-centroids(j,:)).^2);
+    if(dist == 0 || curr_dist < dist)
       dist = curr_dist;
       idx(i) = j;
     end
