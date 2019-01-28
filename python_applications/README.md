@@ -10,6 +10,7 @@ Algorithms used :
 - K-Nearest Neighbors
 - Neural Networks (DNN, CNN)
 - Ensemble (Voting)
+- Gradient Boosting Machine (GBM)
 
 Problems explored
 - Predicting stock market prices
