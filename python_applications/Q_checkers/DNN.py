@@ -6,14 +6,13 @@ import tensorflow as tf
 import numpy as np
 
 
-class DNN:
+class DNN(object):
 
-    def __init__(self, state_size, batch_size):
+    def __init__(self, state_size):
         self.learning_rate = 0.001
         self.activation = 'relu'
         self.model = self._make_model()
         self.state_size = state_size
-        self.batch_size = batch_size
 
     def _huber_loss(self, y_true, y_pred, clip_delta=1.0):
         error = y_true - y_pred
@@ -33,11 +32,11 @@ class DNN:
         return model
 
     def train(self, X, y):
-        loss = self.model.fit(X, y, batch_size=self.batch_size, nb_epoch=1,  verbose=0, shuffle=True)
+        loss = self.model.fit(X, y, nb_epoch=1,  verbose=0, shuffle=True)
         return loss
 
     def predict_Q(self, state, action):
-        state = state.reshape((1,self.state_size))
+        state = state.reshape((1, self.state_size))
         return self.model.predict(np.hstack((state,action)))[0]
 
     def best_action(self, state, actions):

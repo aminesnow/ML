@@ -37,15 +37,15 @@ def show_board(bd_state):
     for row in range(BOARD_SIZE):
         for col in range(BOARD_SIZE):
             if (bd_state[row][col] == 0):
-                print("+ ",end='')
+                print("+ ")
             elif (bd_state[row][col] == 1):
-                print("W ",end='')
+                print("W ")
             elif (bd_state[row][col] == -1):
-                print("B ",end='')
+                print("B ")
             elif (bd_state[row][col] == 2):
-                print("\033[4mW[0m", end='')
+                print("\033[4mW[0m")
             elif (bd_state[row][col] == -2):
-                print("\033[4mB\033[0m ", end='')
+                print("\033[4mB\033[0m ")
         print(str(row))
 
 
@@ -100,4 +100,5 @@ def run_game():
 
 
 
-run_game()
+#run_game()
+
