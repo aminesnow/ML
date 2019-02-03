@@ -2,8 +2,13 @@ from checkers import game
 import numpy as np
 from functools import reduce
 from math import ceil
+import random
+from copy import deepcopy
+import gc
 
 BOARD_SIZE = 8
+HUMAN = 'human'
+AGENT = 'agent'
 
 class Gameplay(object):
 
@@ -27,7 +32,8 @@ class Gameplay(object):
         tt = move_coord[1]
         return [self.pos_from_coord(fr[0], fr[1], gme), self.pos_from_coord(tt[0], tt[1], gme)]
 
-    def show_board(self, bd_state):
+    @staticmethod
+    def show_board(bd_state):
         rows = reduce((lambda x, y: "{} {}".format(x, y)), range(BOARD_SIZE))
         print(rows)
         for row in range(BOARD_SIZE):
@@ -44,12 +50,12 @@ class Gameplay(object):
                     print("\033[4mB\033[0m ", end="")
             print(str(row))
 
-    def update_board_state(self,gme):
+    def update_board_state(self, board):
         board_tate = np.zeros((BOARD_SIZE,BOARD_SIZE))
         # W:1, B:2
-        for piece in gme.board.pieces:
+        for piece in board.pieces:
             if(not piece.captured):
-                col = self.calc_col(piece.position, gme.board.width, piece.get_row())
+                col = self.calc_col(piece.position, board.width, piece.get_row())
                 if(piece.player == 1): # W
                     if (piece.king):
                         board_tate[piece.get_row()][col] = 2
@@ -62,13 +68,19 @@ class Gameplay(object):
                         board_tate[piece.get_row()][col] = -1
         return board_tate
 
+    def board_state_from_move(self, board, move):
+        return self.update_board_state(board.create_new_board_from_move(move))
+
+    def board_states_from_possible_moves(self, board):
+        return np.array(list(map(lambda x: self.board_state_from_move(board, x), board.get_possible_moves())))
+
     def make_move(self, gme, move):
         gme.move(move)
-        return self.update_board_state(gme)
+        return self.update_board_state(gme.board)
 
     def run_game(self):
         gm = game.Game()
-        boardState = self.update_board_state(gm)
+        boardState = self.update_board_state(gm.board)
         while(not gm.is_over()):
             self.show_board(boardState)
             print("Current Player: " + ("White" if gm.whose_turn() == 1 else "Black"))
@@ -76,6 +88,10 @@ class Gameplay(object):
             print("Valid Moves: ")
             for i in range(len(possible_moves_coord)):
                 print(str(i + 1) + ": " + (str(possible_moves_coord[i])))
+
+            for bd_st in self.board_states_from_possible_moves(gm.board):
+                self.show_board(bd_st)
+
             move_idx = -1
             while move_idx not in range(len(possible_moves_coord)):
                 usr_input = input("Pick a move: ")
@@ -87,9 +103,10 @@ class Gameplay(object):
             if (move in gm.board.get_possible_capture_moves()):
                 print('capture move!')
 
+            piece_was_king = gm.board.searcher.get_piece_by_position(move[0]).king
             boardState = self.make_move(gm, move)
 
-            if (gm.board.searcher.get_piece_by_position(move[1]).king):
+            if (not piece_was_king) and gm.board.searcher.get_piece_by_position(move[1]).king:
                 print('king move!')
 
         print("Game Over! ")
@@ -99,8 +116,10 @@ class Gameplay(object):
             print("Winner is: " + ("White" if gm.get_winner() == 1 else "Black"))
 
     def run_game_with_agent(self, agent):
+        players = [HUMAN, AGENT]
         gm = game.Game()
-        boardState = self.update_board_state(gm)
+        boardState = self.update_board_state(gm.board)
+        random.shuffle(players)
         while (not gm.is_over()):
             self.show_board(boardState)
             print("Current Player: " + ("White" if gm.whose_turn() == 1 else "Black"))
@@ -109,7 +128,7 @@ class Gameplay(object):
             for i in range(len(possible_moves_coord)):
                 print(str(i + 1) + ": " + (str(possible_moves_coord[i])))
 
-            if(gm.whose_turn() == 1):
+            if(players[gm.whose_turn()-1] == HUMAN):
                 move = -1
                 while move not in range(len(possible_moves_coord)):
                     usr_input = input("Pick a move: ")
@@ -118,8 +137,9 @@ class Gameplay(object):
                         print("Illegal move")
                 print("Human picks {}: ".format(move))
             else:
-                move = self.get_QAgent_move(agent, boardState, possible_moves_coord)
-                print("Agent picks {}: ".format(move))
+                move, q_val = self.get_QAgent_move(agent, boardState, gm.board, players.index(AGENT)==1)
+                # print("Agent {} picks {}: ".format(agent.name, move+1))
+                # print("Agent {} Q-value {}: ".format(agent.name, q_val))
 
             boardState = self.make_move(gm, gm.get_possible_moves()[move])
 
@@ -138,5 +158,33 @@ class Gameplay(object):
                 print("Illegal move")
         return move
 
-    def get_QAgent_move(self, agent, board_state, possible_moves):
-        return agent.choose_action(board_state, possible_moves)
+    def get_QAgent_move(self, agent, board_state, current_board, invert=False):
+        board = deepcopy(current_board)
+        moves = board.get_possible_moves()
+        best_qs = []
+        for move in moves:
+            new_board = board.create_new_board_from_move(move)
+            new_board_state = self.update_board_state(new_board)
+
+            if invert:
+                move_q = agent.ddqn.predict_Q((board_state[::-1] * (-1)), (new_board_state[::-1] * (-1)))[0]
+            else:
+                move_q = agent.ddqn.predict_Q(board_state, new_board_state)[0]
+
+            # print('move_q: {} ({})'.format(move_q, invert))
+
+            possible_board_states_L2 = self.board_states_from_possible_moves(new_board)
+            if len(possible_board_states_L2) > 0:
+                best_move, best_q = agent.choose_action(new_board_state, possible_board_states_L2, invert)
+            else:
+                best_q = 0
+            # print('best_move_q: {} '.format(best_q))
+
+            best_qs.append(best_q+move_q)
+
+        if invert:
+            best_qs = best_qs[::-1]
+
+        # print('best_move: {} '.format(np.argmax(best_qs)))
+
+        return np.argmax(best_qs), np.max(best_qs)

@@ -1,20 +1,20 @@
 from keras.models import Sequential
-from keras.layers import Dense
-from keras.optimizers import Adam
+from keras.layers import Dense, Dropout
+from keras.optimizers import Adam, RMSprop
 from keras import backend as K
 import tensorflow as tf
 import numpy as np
 
+
 class DNN(object):
 
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size):
         self.learning_rate = 0.001
         self.activation = 'relu'
         self.state_size = state_size
-        self.action_size = action_size
         self.model = self._make_model()
 
-    def _huber_loss(self, y_true, y_pred, clip_delta=1.0):
+    def _huber_loss(self, y_true, y_pred, clip_delta=2.0):
         error = y_true - y_pred
         cond = K.abs(error) <= clip_delta
         squared_loss = 0.5 * K.square(error)
@@ -24,26 +24,20 @@ class DNN(object):
 
     def _make_model(self):
         model = Sequential()
-        model.add(Dense(100, input_dim=self.state_size+self.action_size, activation=self.activation))
-        model.add(Dense(100, activation=self.activation))
-        model.add(Dense(100, activation=self.activation))
+        model.add(Dense(150, input_dim=2*self.state_size, activation=self.activation))
+        model.add(Dense(150, activation=self.activation))
+        model.add(Dense(150, activation=self.activation))
+        model.add(Dropout(0.5))
         model.add(Dense(1, activation='linear'))
         model.compile(loss=self._huber_loss, optimizer=Adam(lr=self.learning_rate))
         return model
 
     def train(self, X, y):
-        loss = self.model.fit(X, y, epochs=1,  verbose=0, shuffle=True)
-        return loss
+        hist = self.model.fit(X, y, epochs=10,  verbose=0, shuffle=True)
+        return hist
 
-    def predict_Q(self, state, action):
-        state = state.reshape((1, self.state_size))
-        action = np.array(action).reshape((1, self.action_size))
-        #print(self.model.predict(np.hstack((state, action)))[0])
-        return self.model.predict(np.hstack((state, action)))[0]
-
-    def best_action(self, state, actions):
-        q_preds = []
-        for action in actions:
-            q_preds.append(self.predict_Q(state, action))
-
-        return np.argmax(q_preds)
+    def predict_Q(self, state, state_action):
+        state = state.reshape(self.state_size)
+        state_action = state_action.reshape(self.state_size)
+        #print(np.array([np.hstack((state, state_action))]))
+        return self.model.predict(np.array([np.hstack((state, state_action))]))[0]
