@@ -2,23 +2,46 @@ from DDQLearning import DDQLearning
 from DDQNAgent import DDQNAgent
 from gameplay import Gameplay
 import gc
-import random
+
+N_EPISODES = 10000
+
+
+def train_agent(n_episodes, start_eps=1.0, agt=None, resume=False):
+    if resume:
+        ddql = DDQLearning()
+        ddql.agent = agt
+        ddql.agent.epsilon = start_eps
+    else:
+        ddql = DDQLearning()
+    return ddql.auto_play(n_episodes)
+
+
+def load_agent(weights_name, name, with_eps=False):
+    agt = DDQNAgent(name, with_eps)
+    agt.load_weights(weights_name)
+    return agt
+
 
 gc.collect()
 
-N_EPISODES = 40000
 
 gp = Gameplay()
 
-ddq_learner = DDQLearning()
-agent = ddq_learner.auto_play(N_EPISODES)
 
-agent.replay_memory()
+TRAIN_NEW_AGENT = True
 
 
-agent.save_weights('agt.h5')
+if TRAIN_NEW_AGENT:
+    agent = train_agent(N_EPISODES)
+    agent.save_weights('agt.h5')
+else:
+    agent = load_agent('agt.h5', 'Smith', True)
+    agent = train_agent(50, 0.03, agent, True)
+
+
 agent.with_eps = False
 gp.run_game_with_agent(agent)
+
 
 # minibatch = random.sample(agent.memory, 3)
 # for board_state, board_state_action, reward, next_board_state, next_possible_board_states, done in agent.memory:
@@ -34,11 +57,3 @@ gp.run_game_with_agent(agent)
 #             Gameplay.show_board(poss)
 #         print('reward {}'.format(reward))
 #         print('done {}'.format(done))
-
-
-# agent = DDQNAgent('Smith', False)
-# agent.load_weights('agt.h5')
-# gp.run_game_with_agent(agent)
-
-
-# gp.run_game()

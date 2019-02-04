@@ -31,8 +31,8 @@ class DDQLearning(object):
                 move_idx, q_val = self.game_play.get_QAgent_move(self.agent, boardState, gm.board, (player == 2))
 
                 if (player == 2):
-                    boardState = (boardState[::-1]*(-1))
-                    possible_board_states = np.array(list(map(lambda x: x[::-1]*(-1), possible_board_states)))
+                    boardState = Gameplay.invert_board(boardState)
+                    possible_board_states = np.array(list(map(lambda x: Gameplay.invert_board(x), possible_board_states)))
 
                 # Updating previous history
                 if len(turns_hist[player]) > 0:
@@ -68,7 +68,7 @@ class DDQLearning(object):
                     'done': False
                 })
                 if (player == 2):
-                    turns_hist[player][-1]['board_state_action'] = (new_boardState[::-1] * (-1))
+                    turns_hist[player][-1]['board_state_action'] = Gameplay.invert_board(new_boardState)
 
                 boardState = new_boardState
 
@@ -83,7 +83,6 @@ class DDQLearning(object):
                 turns_hist[gm.get_winner()][-1]['reward'] += WIN_REWARD
                 turns_hist[gm.get_winner()][-1]['done'] = True
                 turns_hist[self.get_other_player(gm.get_winner())][-1]['done'] = True
-
 
             for k, v in turns_hist.items():
                 print("Reward sum for {}: {}".format(k, sum(list(map(lambda x: x['reward'], v)))))

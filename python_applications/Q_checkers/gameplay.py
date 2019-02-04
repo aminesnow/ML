@@ -36,6 +36,7 @@ class Gameplay(object):
     def show_board(bd_state):
         rows = reduce((lambda x, y: "{} {}".format(x, y)), range(BOARD_SIZE))
         print(rows)
+        #print(bd_state)
         for row in range(BOARD_SIZE):
             for col in range(BOARD_SIZE):
                 if (bd_state[row][col] == 0):
@@ -77,6 +78,10 @@ class Gameplay(object):
     def make_move(self, gme, move):
         gme.move(move)
         return self.update_board_state(gme.board)
+
+    @staticmethod
+    def invert_board(board_state):
+        return np.array(list(map(lambda x: x[::-1]*(-1), board_state)))[::-1]
 
     def run_game(self):
         gm = game.Game()
@@ -167,24 +172,23 @@ class Gameplay(object):
             new_board_state = self.update_board_state(new_board)
 
             if invert:
-                move_q = agent.ddqn.predict_Q((board_state[::-1] * (-1)), (new_board_state[::-1] * (-1)))[0]
+                move_q = agent.ddqn.predict_Q(Gameplay.invert_board(board_state), Gameplay.invert_board(new_board_state))[0]
             else:
                 move_q = agent.ddqn.predict_Q(board_state, new_board_state)[0]
 
-            # print('move_q: {} ({})'.format(move_q, invert))
+            #print('move_q: {} ({})'.format(move_q, invert))
 
+            # opponent's moves
             possible_board_states_L2 = self.board_states_from_possible_moves(new_board)
             if len(possible_board_states_L2) > 0:
-                best_move, best_q = agent.choose_action(new_board_state, possible_board_states_L2, invert)
+                best_move, best_q = agent.choose_action(new_board_state, possible_board_states_L2, not invert)
             else:
                 best_q = 0
-            # print('best_move_q: {} '.format(best_q))
+            #print('next best_move_q: {} '.format(best_q))
 
-            best_qs.append(best_q+move_q)
+            best_qs.append(move_q-best_q)
 
-        if invert:
-            best_qs = best_qs[::-1]
-
-        # print('best_move: {} '.format(np.argmax(best_qs)))
+        #print('best_qs: {} '.format(best_qs))
+        #print('moves: {} '.format(moves))
 
         return np.argmax(best_qs), np.max(best_qs)

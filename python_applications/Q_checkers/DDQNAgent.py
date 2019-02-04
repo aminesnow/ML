@@ -19,11 +19,11 @@ class DDQNAgent(object):
         self.replay_batch_size = 254
         self.ddqn = DNN(self.state_size)
         self.ddqn_target = DNN(self.state_size)
-        self.episodes_count = 0
+        self.minibatch_count = 0
         self.gamma = 0.999
         self.epsilon = 1.0
         self.epsilon_min = 0.03
-        self.epsilon_decay_rate = 0.9995
+        self.epsilon_decay_rate = 0.995
         self.target_update_threshold = 1016
         self.replay_count = 0
         self.with_eps = with_eps
@@ -61,14 +61,15 @@ class DDQNAgent(object):
             minibatch_y.append(np.clip(q_value, -2, 2))
             self.replay_count += 1
 
+        self.minibatch_count += 1
         #print(minibatch_X)
         hist = self.ddqn.train(np.array(minibatch_X), np.array(minibatch_y))
         avg_loss += np.mean(hist.history['loss'])
 
-        self.loss_mean = (self.loss_mean*self.episodes_count + avg_loss)/(self.episodes_count+1)
+        self.loss_mean = (self.loss_mean*self.minibatch_count + avg_loss)/(self.minibatch_count+1)
 
-        print('{} episode average Q_value: {}'.format(self.name, np.mean(minibatch_y)))
-        print('{} episode average loss: {}'.format(self.name, avg_loss))
+        print('{} minibatch average Q_value: {}'.format(self.name, np.mean(minibatch_y)))
+        print('{} minibatch average loss: {}'.format(self.name, avg_loss))
         print('{} overall average loss: {}'.format(self.name, self.loss_mean))
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay_rate
@@ -78,22 +79,35 @@ class DDQNAgent(object):
         # self.with_eps = False
         q_values = []
         if invert:
-            board_state = (board_state[::-1] * (-1))
-            possible_board_states = np.array(list(map(lambda x: x[::-1] * (-1), possible_board_states)))
+            board_state = Gameplay.invert_board(board_state)
+            possible_board_states = np.array(list(map(lambda x: Gameplay.invert_board(x), possible_board_states)))
         if self.with_eps and np.random.rand() <= self.epsilon:
             #print('Random action!')
             action_index = np.random.randint(0, len(possible_board_states))
             q_values.append(0)
         else:
             #print('Greedy action!')
+            #Gameplay.show_board(board_state)
+            #print('-----{}-----'.format(invert))
             for possible_bd_state in possible_board_states:
-                # Gameplay.show_board(possible_bd_state)
+                #Gameplay.show_board(possible_bd_state)
+                #print('board q: {}'.format(self.ddqn.predict_Q(board_state, possible_bd_state)[0]))
                 q_values.append(self.ddqn.predict_Q(board_state, possible_bd_state)[0])
-            if invert:
-                q_values = q_values[::-1]
+
             action_index = np.argmax(q_values)
-            #print(q_values)
         return action_index, np.max(q_values)
+
+    def get_moves_Q_values(self, board_state, possible_board_states, invert=False):
+        q_values = []
+        if invert:
+            board_state = Gameplay.invert_board(board_state)
+            possible_board_states = np.array(list(map(lambda x: Gameplay.invert_board(x), possible_board_states)))
+
+        for possible_bd_state in possible_board_states:
+            # Gameplay.show_board(possible_bd_state)
+            q_values.append(self.ddqn.predict_Q(board_state, possible_bd_state)[0])
+
+        return q_values
 
     def update_target_weights(self):
         print('Update target weights!')
