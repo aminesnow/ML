@@ -115,6 +115,7 @@ class DDQNAgent(object):
 
     def save_weights(self, filename):
         self.ddqn.model.save_weights(WEIGHTS_DIR+filename, overwrite=True)
+        self.update_target_weights()
 
     def load_weights(self, filename):
         self.ddqn.model.load_weights(WEIGHTS_DIR+filename)

@@ -39,11 +39,7 @@ class DDQLearning(object):
                     turns_hist[player][-1]['next_board_state'] = boardState
                     turns_hist[player][-1]['next_possible_board_states'] = possible_board_states
 
-
-                if (player == 2):
-                    move = gm.get_possible_moves()[::-1][move_idx]
-                else:
-                    move = gm.get_possible_moves()[move_idx]
+                move = gm.get_possible_moves()[move_idx]
 
                 reward = 0
                 if (move in gm.board.get_possible_capture_moves()):

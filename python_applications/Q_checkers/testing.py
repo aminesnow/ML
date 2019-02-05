@@ -28,7 +28,7 @@ gc.collect()
 gp = Gameplay()
 
 
-TRAIN_NEW_AGENT = True
+TRAIN_NEW_AGENT = False
 
 
 if TRAIN_NEW_AGENT:
@@ -36,7 +36,7 @@ if TRAIN_NEW_AGENT:
     agent.save_weights('agt.h5')
 else:
     agent = load_agent('agt.h5', 'Smith', True)
-    agent = train_agent(50, 0.03, agent, True)
+    agent = train_agent(N_EPISODES, 0.3, agent, True)
 
 
 agent.with_eps = False
