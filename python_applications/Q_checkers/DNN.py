@@ -9,8 +9,8 @@ import numpy as np
 class DNN(object):
 
     def __init__(self, state_size):
-        self.learning_rate = 0.001
-        self.activation = 'relu'
+        self.learning_rate = 0.0001
+        self.activation = 'sigmoid'
         self.state_size = state_size
         self.model = self._make_model()
 
@@ -24,10 +24,11 @@ class DNN(object):
 
     def _make_model(self):
         model = Sequential()
-        model.add(Dense(150, input_dim=2*self.state_size, activation=self.activation))
-        model.add(Dense(150, activation=self.activation))
-        model.add(Dense(150, activation=self.activation))
-        model.add(Dropout(0.5))
+        model.add(Dense(200, input_dim=2*self.state_size, activation=self.activation))
+        model.add(Dense(200, activation=self.activation))
+        model.add(Dropout(0.3))
+        model.add(Dense(200, activation=self.activation))
+        model.add(Dropout(0.3))
         model.add(Dense(1, activation='linear'))
         model.compile(loss=self._huber_loss, optimizer=Adam(lr=self.learning_rate))
         return model
@@ -40,4 +41,4 @@ class DNN(object):
         state = state.reshape(self.state_size)
         state_action = state_action.reshape(self.state_size)
         #print(np.array([np.hstack((state, state_action))]))
-        return self.model.predict(np.array([np.hstack((state, state_action))]))[0]
+        return self.model.predict(np.array([np.hstack((state, state_action))]))[0][0]

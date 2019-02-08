@@ -10,27 +10,33 @@ BOARD_SIZE = 8
 HUMAN = 'human'
 AGENT = 'agent'
 
+
 class Gameplay(object):
 
-    def calc_col(self, pos, row_width, row):
+    @staticmethod
+    def calc_col(pos, row_width, row):
         return (2*(pos - 1 - row*row_width)) + ((row+1) % 2)
 
-    def pos_coord(self, pos, gme):
+    @staticmethod
+    def pos_coord(pos, gme):
         row = ceil(pos / gme.board.width) - 1
-        return [row, self.calc_col(pos, gme.board.width, row)]
+        return [row, Gameplay.calc_col(pos, gme.board.width, row)]
 
-    def pos_from_coord(self, coord_row, coord_col, gme):
+    @staticmethod
+    def pos_from_coord(coord_row, coord_col, gme):
         return int(coord_row*gme.board.width + 1 + ((coord_col-((coord_row+1) % 2))/2))
 
-    def move_from_pos(self, mv, gme):
+    @staticmethod
+    def move_from_pos(mv, gme):
         fr = mv[0]
         tt = mv[1]
-        return [self.pos_coord(fr, gme), self.pos_coord(tt, gme)]
+        return [Gameplay.pos_coord(fr, gme), Gameplay.pos_coord(tt, gme)]
 
-    def pos_move_from_coord(self,move_coord, gme):
+    @staticmethod
+    def pos_move_from_coord(move_coord, gme):
         fr = move_coord[0]
         tt = move_coord[1]
-        return [self.pos_from_coord(fr[0], fr[1], gme), self.pos_from_coord(tt[0], tt[1], gme)]
+        return [Gameplay.pos_from_coord(fr[0], fr[1], gme), Gameplay.pos_from_coord(tt[0], tt[1], gme)]
 
     @staticmethod
     def show_board(bd_state):
@@ -51,33 +57,37 @@ class Gameplay(object):
                     print("\033[4mB\033[0m ", end="")
             print(str(row))
 
-    def update_board_state(self, board):
+    @staticmethod
+    def board_state_from_board(board):
         board_tate = np.zeros((BOARD_SIZE,BOARD_SIZE))
         # W:1, B:2
         for piece in board.pieces:
-            if(not piece.captured):
-                col = self.calc_col(piece.position, board.width, piece.get_row())
-                if(piece.player == 1): # W
-                    if (piece.king):
+            if (not piece.captured):
+                col = Gameplay.calc_col(piece.position, board.width, piece.get_row())
+                if (piece.player == 1): # W
+                    if piece.king:
                         board_tate[piece.get_row()][col] = 2
                     else:
                         board_tate[piece.get_row()][col] = 1
                 else:
-                    if (piece.king):
+                    if piece.king:
                         board_tate[piece.get_row()][col] = -2
                     else:
                         board_tate[piece.get_row()][col] = -1
         return board_tate
 
-    def board_state_from_move(self, board, move):
-        return self.update_board_state(board.create_new_board_from_move(move))
+    @staticmethod
+    def board_state_from_move(board, move):
+        return Gameplay.board_state_from_board(board.create_new_board_from_move(move))
 
-    def board_states_from_possible_moves(self, board):
-        return np.array(list(map(lambda x: self.board_state_from_move(board, x), board.get_possible_moves())))
+    @staticmethod
+    def board_states_from_possible_moves(board):
+        return np.array(list(map(lambda x: Gameplay.board_state_from_move(board, x), board.get_possible_moves())))
 
-    def make_move(self, gme, move):
+    @staticmethod
+    def make_move(gme, move):
         gme.move(move)
-        return self.update_board_state(gme.board)
+        return Gameplay.board_state_from_board(gme.board)
 
     @staticmethod
     def invert_board(board_state):
@@ -85,7 +95,7 @@ class Gameplay(object):
 
     def run_game(self):
         gm = game.Game()
-        boardState = self.update_board_state(gm.board)
+        boardState = self.board_state_from_board(gm.board)
         while(not gm.is_over()):
             self.show_board(boardState)
             print("Current Player: " + ("White" if gm.whose_turn() == 1 else "Black"))
@@ -123,7 +133,7 @@ class Gameplay(object):
     def run_game_with_agent(self, agent):
         players = [HUMAN, AGENT]
         gm = game.Game()
-        boardState = self.update_board_state(gm.board)
+        boardState = self.board_state_from_board(gm.board)
         random.shuffle(players)
         while (not gm.is_over()):
             self.show_board(boardState)
@@ -142,9 +152,9 @@ class Gameplay(object):
                         print("Illegal move")
                 print("Human picks {}: ".format(move))
             else:
-                move, q_val = self.get_QAgent_move(agent, boardState, gm.board, players.index(AGENT)==1)
-                # print("Agent {} picks {}: ".format(agent.name, move+1))
-                # print("Agent {} Q-value {}: ".format(agent.name, q_val))
+                move, q_val = self.get_QAgent_move_pp(agent, gm.board)
+                print("Agent {} picks {}: ".format(agent.name, move+1))
+                print("Agent {} Q-value {}: ".format(agent.name, q_val))
 
             boardState = self.make_move(gm, gm.get_possible_moves()[move])
 
@@ -163,32 +173,44 @@ class Gameplay(object):
                 print("Illegal move")
         return move
 
-    def get_QAgent_move(self, agent, board_state, current_board, invert=False):
-        board = deepcopy(current_board)
+    def get_QAgent_move(self, agent, board_state, board, invert=False):
+        #board = deepcopy(current_board)
+        curr_player = board.player_turn
         moves = board.get_possible_moves()
         best_qs = []
-        for move in moves:
-            new_board = board.create_new_board_from_move(move)
-            new_board_state = self.update_board_state(new_board)
+        if agent.with_eps and np.random.rand() <= agent.epsilon:
+            return np.random.randint(0, len(moves)), 0
+        else:
+            for move in moves:
+                new_board = board.create_new_board_from_move(move)
+                new_board_state = Gameplay.board_state_from_board(new_board)
 
-            if invert:
-                move_q = agent.ddqn.predict_Q(Gameplay.invert_board(board_state), Gameplay.invert_board(new_board_state))[0]
-            else:
-                move_q = agent.ddqn.predict_Q(board_state, new_board_state)[0]
+                if invert:
+                    move_q = agent.ddqn.predict_Q(Gameplay.invert_board(board_state), Gameplay.invert_board(new_board_state))
+                else:
+                    move_q = agent.ddqn.predict_Q(board_state, new_board_state)
 
-            #print('move_q: {} ({})'.format(move_q, invert))
+                #print('move_q: {} ({})'.format(move_q, invert))
 
-            # opponent's moves
-            possible_board_states_L2 = self.board_states_from_possible_moves(new_board)
-            if len(possible_board_states_L2) > 0:
-                best_move, best_q = agent.choose_action(new_board_state, possible_board_states_L2, not invert)
-            else:
+                # opponent's moves
+                possible_board_states_L2 = Gameplay.board_states_from_possible_moves(new_board)
                 best_q = 0
-            #print('next best_move_q: {} '.format(best_q))
 
-            best_qs.append(move_q-best_q)
+                if len(possible_board_states_L2) > 0:
+                    if (curr_player != new_board.player_turn):
+                        _, best_q = agent.choose_action(new_board_state, possible_board_states_L2, not invert)
+                    else:
+                        _, best_q = agent.choose_action(new_board_state, possible_board_states_L2, invert)
+                        best_q = -best_q
 
-        #print('best_qs: {} '.format(best_qs))
-        #print('moves: {} '.format(moves))
+                #print('next best_move_q: {} '.format(best_q))
 
-        return np.argmax(best_qs), np.max(best_qs)
+                best_qs.append(move_q-best_q)
+
+            #print('best_qs: {} '.format(best_qs))
+            #print('moves: {} '.format(moves))
+
+            return np.argmax(best_qs), np.max(best_qs)
+
+    def get_QAgent_move_pp(self, agent, board):
+        return agent.choose_action_pp(board)

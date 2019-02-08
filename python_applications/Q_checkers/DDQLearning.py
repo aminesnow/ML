@@ -22,13 +22,14 @@ class DDQLearning(object):
                 2: []
             }
             gm = game.Game()
-            boardState = self.game_play.update_board_state(gm.board)
+            boardState = self.game_play.board_state_from_board(gm.board)
 
             while (not gm.is_over()):
                 player = gm.whose_turn()
 
                 possible_board_states = self.game_play.board_states_from_possible_moves(gm.board)
-                move_idx, q_val = self.game_play.get_QAgent_move(self.agent, boardState, gm.board, (player == 2))
+                #move_idx, q_val = self.game_play.get_QAgent_move(self.agent, boardState, gm.board, (player == 2))
+                move_idx, q_val = self.game_play.get_QAgent_move_pp(self.agent, gm.board)
 
                 if (player == 2):
                     boardState = Gameplay.invert_board(boardState)
@@ -78,6 +79,7 @@ class DDQLearning(object):
                 print("Winner is: {}".format(gm.get_winner()))
                 turns_hist[gm.get_winner()][-1]['reward'] += WIN_REWARD
                 turns_hist[gm.get_winner()][-1]['done'] = True
+                turns_hist[self.get_other_player(gm.get_winner())][-1]['reward'] -= WIN_REWARD
                 turns_hist[self.get_other_player(gm.get_winner())][-1]['done'] = True
 
             for k, v in turns_hist.items():
