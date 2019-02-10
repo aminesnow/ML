@@ -1,16 +1,18 @@
+import random
 from collections import deque
 import numpy as np
-from DNN import DNN
-import random
-from gameplay import Gameplay
-
+from checkers import game
+from utils.gameplay import Gameplay
+from v1.DNN import DNN
+import utils.config as config
+import matplotlib.pyplot as plt
 
 BOARD_SIZE = 8
 MEM_SIZE = 40000
-WEIGHTS_DIR = './weights/'
+WEIGHTS_DIR = './v1/weights/'
 
 
-class DDQNAgent(object):
+class DDQAgent(object):
     def __init__(self, name, with_eps):
         self.name = name
         self.memory = deque([], maxlen=MEM_SIZE)
@@ -67,7 +69,6 @@ class DDQNAgent(object):
             board_state_reshaped = board_state.reshape(self.state_size)
             board_state_action_reshaped = board_state_action.reshape(self.state_size)
             minibatch_X.append(np.hstack((board_state_reshaped, board_state_action_reshaped)))
-            #minibatch_y.append(np.clip(q_value, -3, 3))
             minibatch_y.append(q_value)
             self.replay_count += 1
 
@@ -85,26 +86,8 @@ class DDQNAgent(object):
             self.epsilon *= self.epsilon_decay_rate
         print('{} epsilon: {}'.format(self.name, self.epsilon))
 
-    def choose_action(self, board_state, possible_board_states, invert=False):
-        # self.with_eps = False
-        q_values = []
-        if invert:
-            board_state = Gameplay.invert_board(board_state)
-            possible_board_states = np.array(list(map(lambda x: Gameplay.invert_board(x), possible_board_states)))
-
-        if self.with_eps and np.random.rand() <= self.epsilon:
-            #print('Random action!')
-            action_index = np.random.randint(0, len(possible_board_states))
-            q_values.append(0)
-        else:
-            q_values = self.get_moves_Q_values(board_state, possible_board_states)
-            # for possible_bd_state in possible_board_states:
-            #     q_values.append(self.ddqn.predict_Q(board_state, possible_bd_state))
-
-            action_index = np.argmax(q_values)
-        return action_index, np.max(q_values)
-
-    def choose_action_pp(self, board):
+    def choose_action_pp(self, gm):
+        board = gm.board
         best_q = 0
         if self.with_eps and np.random.rand() <= self.epsilon:
             action_index = np.random.randint(0, len(board.get_possible_moves()))
@@ -150,8 +133,100 @@ class DDQNAgent(object):
 
         return best_move_idx, best_q
 
+    def auto_play(self, n_episodes):
+        plt.ion()
+        plt.xlabel('Episodes')
+        plt.ylabel('{} mean error'.format(self.name))
+        x, y = [], []
+        line, = plt.plot(x, y)
+        plt.xlim(0, n_episodes)
+        plt.ylim(0, config.PLOT_Y_LIM)
 
+        for i in range(n_episodes):
+            print("Episode {}".format(i))
+            turns_hist = {
+                1: [],
+                2: []
+            }
+            gm = game.Game()
+            boardState = Gameplay.board_state_from_board(gm.board)
 
+            while (not gm.is_over()):
+                player = gm.whose_turn()
+
+                possible_board_states = Gameplay.board_states_from_possible_moves(gm.board)
+                #move_idx, q_val = self.game_play.get_QAgent_move(self.agent, boardState, gm.board, (player == 2))
+                move_idx, q_val = Gameplay.get_QAgent_move_pp(self, gm)
+
+                if (player == 2):
+                    boardState = Gameplay.invert_board(boardState)
+                    possible_board_states = np.array(list(map(lambda x: Gameplay.invert_board(x), possible_board_states)))
+
+                # Updating previous history
+                if len(turns_hist[player]) > 0:
+                    turns_hist[player][-1]['next_board_state'] = boardState
+                    turns_hist[player][-1]['next_possible_board_states'] = possible_board_states
+
+                move = gm.get_possible_moves()[move_idx]
+
+                reward = 0
+                if (move in gm.board.get_possible_capture_moves()):
+                    reward += config.CAPTURE_REWARD
+
+                piece_was_king = gm.board.searcher.get_piece_by_position(move[0]).king
+                new_boardState = Gameplay.make_move(gm, move)
+
+                if (not piece_was_king) and gm.board.searcher.get_piece_by_position(move[1]).king:
+                    reward += config.KING_REWARD
+
+                if len(turns_hist[Gameplay.get_other_player(player)]) > 0:
+                    turns_hist[Gameplay.get_other_player(player)][-1]['reward'] -= reward
+
+                # New history
+                turns_hist[player].append({
+                    'board_state': boardState,
+                    'board_state_action': new_boardState,
+                    'reward': reward,
+                    'next_board_state': None,
+                    'next_possible_board_states': None,
+                    'done': False
+                })
+                if (player == 2):
+                    turns_hist[player][-1]['board_state_action'] = Gameplay.invert_board(new_boardState)
+
+                boardState = new_boardState
+
+            print("Game Over! ")
+            if gm.move_limit_reached():
+                print("It's a tie!!")
+                for j in range(2):
+                    turns_hist[j+1][-1]['reward'] += config.DRAW_REWARD
+                    turns_hist[j+1][-1]['done'] = True
+            else:
+                print("Winner is: {}".format(gm.get_winner()))
+                turns_hist[gm.get_winner()][-1]['reward'] += config.WIN_REWARD
+                turns_hist[gm.get_winner()][-1]['done'] = True
+                turns_hist[Gameplay.get_other_player(gm.get_winner())][-1]['reward'] -= config.WIN_REWARD
+                turns_hist[Gameplay.get_other_player(gm.get_winner())][-1]['done'] = True
+
+            for k, v in turns_hist.items():
+                print("Reward sum for {}: {}".format(k, sum(list(map(lambda x: x['reward'], v)))))
+
+            for k, v in turns_hist.items():
+                for turn_hist in v:
+                    self.remember(turn_hist['board_state'], turn_hist['board_state_action'],
+                                  turn_hist['reward'], turn_hist['next_board_state'],
+                                  turn_hist['next_possible_board_states'], turn_hist['done'])
+
+            if(len(self.memory) > self.replay_batch_size):
+                self.replay_memory()
+                y.append(self.loss_mean)
+                x.append(i)
+                line.set_data(x, y)
+                plt.draw()
+                plt.pause(0.000000001)
+
+        return self
 
     def get_moves_Q_values(self, board_state, possible_board_states):
         q_values = []

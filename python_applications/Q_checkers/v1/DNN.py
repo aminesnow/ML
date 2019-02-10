@@ -10,7 +10,7 @@ class DNN(object):
 
     def __init__(self, state_size):
         self.learning_rate = 0.0001
-        self.activation = 'sigmoid'
+        self.activation = 'tanh'
         self.state_size = state_size
         self.model = self._make_model()
 

@@ -3,8 +3,6 @@ import numpy as np
 from functools import reduce
 from math import ceil
 import random
-from copy import deepcopy
-import gc
 
 BOARD_SIZE = 8
 HUMAN = 'human'
@@ -93,19 +91,20 @@ class Gameplay(object):
     def invert_board(board_state):
         return np.array(list(map(lambda x: x[::-1]*(-1), board_state)))[::-1]
 
-    def run_game(self):
+    @staticmethod
+    def run_game():
         gm = game.Game()
-        boardState = self.board_state_from_board(gm.board)
+        boardState = Gameplay.board_state_from_board(gm.board)
         while(not gm.is_over()):
-            self.show_board(boardState)
+            Gameplay.show_board(boardState)
             print("Current Player: " + ("White" if gm.whose_turn() == 1 else "Black"))
-            possible_moves_coord = list(map(lambda x: self.move_from_pos(x, gm), gm.get_possible_moves()))
+            possible_moves_coord = list(map(lambda x: Gameplay.move_from_pos(x, gm), gm.get_possible_moves()))
             print("Valid Moves: ")
             for i in range(len(possible_moves_coord)):
                 print(str(i + 1) + ": " + (str(possible_moves_coord[i])))
 
-            for bd_st in self.board_states_from_possible_moves(gm.board):
-                self.show_board(bd_st)
+            for bd_st in Gameplay.board_states_from_possible_moves(gm.board):
+                Gameplay.show_board(bd_st)
 
             move_idx = -1
             while move_idx not in range(len(possible_moves_coord)):
@@ -119,7 +118,7 @@ class Gameplay(object):
                 print('capture move!')
 
             piece_was_king = gm.board.searcher.get_piece_by_position(move[0]).king
-            boardState = self.make_move(gm, move)
+            boardState = Gameplay.make_move(gm, move)
 
             if (not piece_was_king) and gm.board.searcher.get_piece_by_position(move[1]).king:
                 print('king move!')
@@ -130,15 +129,16 @@ class Gameplay(object):
         else:
             print("Winner is: " + ("White" if gm.get_winner() == 1 else "Black"))
 
-    def run_game_with_agent(self, agent):
+    @staticmethod
+    def run_game_with_agent(agent):
         players = [HUMAN, AGENT]
         gm = game.Game()
-        boardState = self.board_state_from_board(gm.board)
+        boardState = Gameplay.board_state_from_board(gm.board)
         random.shuffle(players)
         while (not gm.is_over()):
-            self.show_board(boardState)
+            Gameplay.show_board(boardState)
             print("Current Player: " + ("White" if gm.whose_turn() == 1 else "Black"))
-            possible_moves_coord = list(map(lambda x: self.move_from_pos(x, gm), gm.get_possible_moves()))
+            possible_moves_coord = list(map(lambda x: Gameplay.move_from_pos(x, gm), gm.get_possible_moves()))
             print("Valid Moves: ")
             for i in range(len(possible_moves_coord)):
                 print(str(i + 1) + ": " + (str(possible_moves_coord[i])))
@@ -152,11 +152,11 @@ class Gameplay(object):
                         print("Illegal move")
                 print("Human picks {}: ".format(move))
             else:
-                move, q_val = self.get_QAgent_move_pp(agent, gm.board)
+                move, q_val = Gameplay.get_QAgent_move_pp(agent, gm)
                 print("Agent {} picks {}: ".format(agent.name, move+1))
                 print("Agent {} Q-value {}: ".format(agent.name, q_val))
 
-            boardState = self.make_move(gm, gm.get_possible_moves()[move])
+            boardState = Gameplay.make_move(gm, gm.get_possible_moves()[move])
 
         print("Game Over! ")
         if gm.move_limit_reached():
@@ -164,7 +164,52 @@ class Gameplay(object):
         else:
             print("Winner is: " + ("White" if gm.get_winner() == 1 else "Black"))
 
-    def get_human_player_move(self, possible_moves):
+    @staticmethod
+    def run_agent_duel(agt1, agt2, verbose=False):
+        players = [agt1, agt2]
+        gm = game.Game()
+        boardState = Gameplay.board_state_from_board(gm.board)
+        random.shuffle(players)
+        while (not gm.is_over()):
+            if verbose:
+                Gameplay.show_board(boardState)
+                print("Current Player: " + ("White" if gm.whose_turn() == 1 else "Black"))
+                possible_moves_coord = list(map(lambda x: Gameplay.move_from_pos(x, gm), gm.get_possible_moves()))
+                print("Valid Moves: ")
+                for i in range(len(possible_moves_coord)):
+                    print(str(i + 1) + ": " + (str(possible_moves_coord[i])))
+
+            curr_agt = players[gm.whose_turn() - 1]
+            move, q_val = Gameplay.get_QAgent_move_pp(curr_agt, gm)
+
+            if verbose:
+                print("Agent {} picks {}: ".format(curr_agt.name, move + 1))
+                print("Agent {} Q-value {}: ".format(curr_agt.name, q_val))
+
+            boardState = Gameplay.make_move(gm, gm.get_possible_moves()[move])
+
+        if verbose:
+            print("Game Over! ")
+
+        if gm.move_limit_reached():
+            result = 'tie'
+            if verbose:
+                print("It's a tie!!")
+        else:
+            result = players[gm.get_winner()-1].name
+            if verbose:
+                print("Winner is: {}".format(players[gm.get_winner()-1].name))
+
+        return result
+
+
+
+
+
+
+
+    @staticmethod
+    def get_human_player_move(possible_moves):
         move = -1
         while move not in range(len(possible_moves)):
             usr_input = input("Pick a move: ")
@@ -173,44 +218,10 @@ class Gameplay(object):
                 print("Illegal move")
         return move
 
-    def get_QAgent_move(self, agent, board_state, board, invert=False):
-        #board = deepcopy(current_board)
-        curr_player = board.player_turn
-        moves = board.get_possible_moves()
-        best_qs = []
-        if agent.with_eps and np.random.rand() <= agent.epsilon:
-            return np.random.randint(0, len(moves)), 0
-        else:
-            for move in moves:
-                new_board = board.create_new_board_from_move(move)
-                new_board_state = Gameplay.board_state_from_board(new_board)
+    @staticmethod
+    def get_QAgent_move_pp(agent, gm):
+        return agent.choose_action_pp(gm)
 
-                if invert:
-                    move_q = agent.ddqn.predict_Q(Gameplay.invert_board(board_state), Gameplay.invert_board(new_board_state))
-                else:
-                    move_q = agent.ddqn.predict_Q(board_state, new_board_state)
-
-                #print('move_q: {} ({})'.format(move_q, invert))
-
-                # opponent's moves
-                possible_board_states_L2 = Gameplay.board_states_from_possible_moves(new_board)
-                best_q = 0
-
-                if len(possible_board_states_L2) > 0:
-                    if (curr_player != new_board.player_turn):
-                        _, best_q = agent.choose_action(new_board_state, possible_board_states_L2, not invert)
-                    else:
-                        _, best_q = agent.choose_action(new_board_state, possible_board_states_L2, invert)
-                        best_q = -best_q
-
-                #print('next best_move_q: {} '.format(best_q))
-
-                best_qs.append(move_q-best_q)
-
-            #print('best_qs: {} '.format(best_qs))
-            #print('moves: {} '.format(moves))
-
-            return np.argmax(best_qs), np.max(best_qs)
-
-    def get_QAgent_move_pp(self, agent, board):
-        return agent.choose_action_pp(board)
+    @staticmethod
+    def get_other_player(player):
+        return 1 if player == 2 else 2
