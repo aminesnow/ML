@@ -6,7 +6,7 @@ from utils.learning_utils import LearningUtils
 gc.collect()
 
 
-N_EPISODES = 10000
+N_EPISODES = 20000
 TRAIN_NEW_AGENT = False
 
 agt_name = LearningUtils.V2_NAME

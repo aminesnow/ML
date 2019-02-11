@@ -5,8 +5,8 @@ import collections, numpy
 
 n_games = 50
 
-agent_v1 = LearningUtils.load_agent('agt_{}.h5'.format(LearningUtils.V1_NAME), version=1, with_eps=False)
-agent_v2 = LearningUtils.load_agent('agt_{}.h5'.format(LearningUtils.V2_NAME), version=2, with_eps=False)
+agent_v1 = LearningUtils.load_agent('agt_{}_test.h5'.format(LearningUtils.V1_NAME), version=1, with_eps=False)
+agent_v2 = LearningUtils.load_agent('agt_{}_test.h5'.format(LearningUtils.V2_NAME), version=2, with_eps=False)
 
 results = []
 for i in tqdm(range(n_games)):
