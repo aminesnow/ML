@@ -6,6 +6,7 @@ from utils.gameplay import Gameplay
 from v1.DNN import DNN
 import utils.config as config
 import matplotlib.pyplot as plt
+from utils.learning_utils import LearningUtils
 
 BOARD_SIZE = 8
 MEM_SIZE = 40000
@@ -38,6 +39,13 @@ class DDQAgent(object):
     def replay_memory(self):
         print('Replay memory!')
         samples = random.sample(self.memory, self.replay_batch_size)
+
+        done_not_draw = [m for m in self.memory if LearningUtils.is_done_not_draw(m[2], m[5])]
+        if (len(done_not_draw) > config.DONE_NOT_DRAW_LIM):
+            done_not_draw = random.sample(done_not_draw, config.DONE_NOT_DRAW_LIM)
+
+        samples = np.concatenate((samples, done_not_draw), axis=0)
+
         avg_loss = 0
         minibatch_X = []
         minibatch_y = []

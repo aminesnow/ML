@@ -1,12 +1,16 @@
-from utils.learning_utils import LearningUtils
+from utils.agent_utils import AgentUtils
 from utils.gameplay import Gameplay
 from tqdm import tqdm
-import collections, numpy
+import numpy
 
-n_games = 50
+n_games = 100
+eps = 0.01
+with_eps = True
 
-agent_v1 = LearningUtils.load_agent('agt_{}_test.h5'.format(LearningUtils.V1_NAME), version=1, with_eps=False)
-agent_v2 = LearningUtils.load_agent('agt_{}_test.h5'.format(LearningUtils.V2_NAME), version=2, with_eps=False)
+agent_v1 = AgentUtils.load_agent('agt_{}_test.h5'.format(AgentUtils.V1_NAME), version=1, with_eps=with_eps)
+agent_v2 = AgentUtils.load_agent('agt_{}_test.h5'.format(AgentUtils.V2_NAME), version=2, with_eps=with_eps)
+agent_v1.epsilon = eps
+agent_v2.epsilon = eps
 
 results = []
 for i in tqdm(range(n_games)):

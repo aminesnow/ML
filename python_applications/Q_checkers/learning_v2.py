@@ -1,21 +1,20 @@
 import gc
-
 from utils.gameplay import Gameplay
-from utils.learning_utils import LearningUtils
+from utils.agent_utils import AgentUtils
 
 gc.collect()
 
 
-N_EPISODES = 20000
+N_EPISODES = 10000
 TRAIN_NEW_AGENT = False
 
-agt_name = LearningUtils.V2_NAME
+agt_name = AgentUtils.V2_NAME
 
 if TRAIN_NEW_AGENT:
-    agent = LearningUtils.train_agent(N_EPISODES, version=2)
+    agent = AgentUtils.train_agent(N_EPISODES, version=2)
 else:
-    agent = LearningUtils.load_agent('agt_{}_test.h5'.format(agt_name), version=2, with_eps=True)
-    agent = LearningUtils.train_agent(N_EPISODES, start_eps=0.9, agt=agent, resume=True)
+    agent = AgentUtils.load_agent('agt_{}_test.h5'.format(agt_name), version=2, with_eps=True)
+    agent = AgentUtils.train_agent(N_EPISODES, start_eps=0.9, agt=agent, resume=True)
 
 agent.save_weights('agt_{}_test.h5'.format(agt_name))
 agent.with_eps = False
